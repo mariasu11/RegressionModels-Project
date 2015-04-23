@@ -1,0 +1,122 @@
+---
+title: "Regression Models Course Project"
+author: "Asfa L."
+---
+#Executive Summary
+This project takes a closer look at the automobile industry. Specifically, we will look at a data set of a collection of cars and explore the relationship between a set of variables and miles per gallon (MPG) (outcome).  The data set being used is the mtcars data set and we will aim to answer the following two questions: "Is an automatic or manual transmission better for MPG?" and
+"Quantify the MPG difference between automatic and manual transmissions." Our analysis ultimately concludes that manual cars are better for MPG, qsec and weight along wth transmission have a significant affect on mpg, and it will provide a method for quantifying how many more mpg a manual car will have compared to an automatic car.  
+
+#Exploratory Data Analysis
+The mtcars data set contains 32 observations (automobile brand/type) of 11 variables. Let's load the data set, see what it looks like and do some plots to visually see the data.
+```{r load mtcars, eval=FALSE}
+data(mtcars)
+head(mtcars)
+summary(mtcars)
+str(mtcars)
+```
+Now that we have a better idea of what the data looks like lets start by comparing mpg to am (transmission) where 0=automatic and 1=manual.(See Appendix for output)
+```{r boxplot, eval=FALSE}
+boxplot(mpg ~ am, data= mtcars, xlab="Transmission (0 = Automatic, 1 = Manual)", ylab="MPG", main="MPG vs. Transmission")
+```
+A manual transmission seems to have a higher mean MPG and overall higher MPG than automatic transmission. Now, Let's look at all the variables in a pairs plot. (See Appendix for output)
+```{r pairs, eval=FALSE}
+pairs(mtcars, panel=panel.smooth, main="mtcars pairs plot")
+```
+Variables that seem to have a high correlation to MPG are cyl, disp, hp, qsec, and wt.
+
+#Hypothesis Testing
+Lets confirm our initial statement that that there is a difference in mpg based on transmission.  The null hypothesis is that there is no difference in mpg based on transmission. (See Appendix for output)
+```{r ttest, eval=FALSE}
+t.test(mpg ~ am, data=mtcars)
+```
+The p value is less than .05 so we can reject the null and conclude that there is a difference in MPG depending on transmission. We can see that the mean mpg for automatic is 17.14 whereas for manual it is about 7mpg higher at 24.4.
+
+#Regression Analysis
+We can now fit a linear model based on the results of our hypothesis test. (See Appendix for output)
+```{r lm1, eval=FALSE}
+fit1<-lm(mpg ~ am, data=mtcars)
+summary(fit1)
+```
+As expected the p-value is less than .05 which makes the am coefficient a meaningful addition to the model because changes in its value are related to changes in the response variable - mpg. However, the r squared value is quite low at approximately .34.  Lets consider other models which include some of the other confounding variables.
+1. All variables. (See Appendix for output)
+```{r allvars, eval=FALSE}
+ fitall<- lm(mpg ~ ., data=mtcars)
+summary(fitall)
+```
+Here we see the r squared value jump to .81, and the standard error is lower as expected with more variables, however, none of the p-values for the coefficients are significant.
+2. Let's fit a model with the varibales we saw in our exploratory analysis as having a high correlation to mpg. (See Appendix for output)
+```{r sixvars, eval=FALSE}
+fitsixvars<-lm(mpg ~ am + cyl + disp + hp + qsec + wt, data=mtcars)
+summary(fitsixvars)
+```
+Only the pvalue for wt is significant, but the r squared value is .83.  The wt coefficent is also the largest of all the variables so for a one unit change in mpg the wt decreases by 4 units.  So the less weight the greater the fuel efficiency.
+3. qsec(1/4 mile time) has the next highest coefficient, so lets add that to the model and consider the interaction between transmission and weight while holding all the other variables constant. 
+```{r fitfin}
+fitfin<-lm(mpg ~ am + wt + qsec + am*wt, data=mtcars)
+summary(fitfin)
+```
+We see here all the pvalues are significant and the rsquared value .88 which is the highest we have seen and means that the model explains 88% of the variation. The interaction term seems to be correct and make sense that weight and transmission would be correlated and have a significant effect on mpg. The standard error is also 2 which is the lowest we have seen. So, we choose this model. 
+
+#Residual Plots and Diagnostics
+Now we look at the residuals to validate our model. (See Appendix for output)
+```{r resid, eval=FALSE}
+par(mfrow = c(2, 2))
+plot(fitfin)
+```
+1.For the residual plot, the points are randomly dispersed around the horizontal axis, which shows a random pattern, indicating a good fit for a linear model.
+2. The QQ Plot indicates the residuals are normally distributed as they mostly fall on the line.
+3.The Scale-Location Plot uses the square root of the standardized residuals. Like the first plot, there should be no discernable pattern to the plot which is what it shows.
+4.Residuals vs. Leverage plot -  Leverage is a measure of how much each data point influences the regression.  Here we do not see any outliers or points >.5. So there are no points that show a large residual which can distort the regression.
+In performing diagnostics, lets check the hatvalues which measures leverage and see if any points are greater than .5.
+```{r hatvals}
+leverage <- round(hatvalues(fitfin), 3)
+leverage[which(leverage > 0.5)]
+```
+As we expected there are none. Lets also check the dfbetas which measures how much the coefficients change when the i-th case is deleted. 
+```{r dfbetas}
+inf <- dfbetas(fitfin)
+inf[which(inf > 1)]
+```
+No dfbetas greater than 1, so changes are considered not significant.
+
+#Conclusions
+We originally set out to answer two questions: "Is an automatic or manual transmission better for MPG?" and "Quantify the MPG difference between automatic and manual transmissions"
+
+From our analysis we can conclude that on average manual transmissions have greater fuel efficiency, specifically seven mpg greater than automatic cars. At the 95% confidence level manual cars will have anywhere from 3.2 to 11.3 more mpg than automatic cars.
+
+The equation that results from the final regression model(fitfin) is mpg = 9.723 + 14.079am - 2.937wt + 1.017qsec - 4.141(am*wt).  For manual cars (use 1 for am) the equation becomes mpg = 23.803 - 7.078wt + 1.017qsec. For automatic cars (substitute 0 for am) the equation is mpg = 9.723 - 2.937wt + 1.017 qsec. Subtracting the automatic equation from the manual equation gives you mpg=14.079 -4.141wt. So manual cars will have this much more mpg than cars with automatic transmission. 
+
+#Appendix
+
+###Exploratory Analysis
+
+```{r boxplot appendix, echo=FALSE}
+boxplot(mpg ~ am, data= mtcars, xlab="Transmission (0 = Automatic, 1 = Manual)", ylab="MPG", main="MPG vs. Transmission")
+```
+
+```{r pairs appendix, echo=FALSE}
+pairs(mtcars, panel=panel.smooth, main="mtcars pairs plot")
+```
+
+###Hypothesis Testing
+```{r ttest appendix, echo=FALSE}
+t.test(mpg ~ am, data=mtcars)
+```
+
+###Regression Analysis
+```{r reg appendix, echo=FALSE}
+fit1<-lm(mpg ~ am, data=mtcars)
+summary(fit1)
+fitall<- lm(mpg ~ ., data=mtcars)
+summary(fitall)
+fitsixvars<-lm(mpg ~ am + cyl + disp + hp + qsec + wt, data=mtcars)
+summary(fitsixvars)
+```
+
+###Residual Plots and Diagnostics
+```{r resid appendix, echo=FALSE}
+par(mfrow = c(2, 2))
+plot(fitfin)
+```
+
+
